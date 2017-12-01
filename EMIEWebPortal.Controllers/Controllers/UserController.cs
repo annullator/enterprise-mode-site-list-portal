@@ -1,4 +1,4 @@
-﻿using EMIEWebPortal.DataModel;
+using EMIEWebPortal.DataModel;
 using EMIEWebPortal.Common;
 using EMIEWebPortal.Models;
 using System;
@@ -103,7 +103,7 @@ namespace EMIEWebPortal.Controllers
                                //need this comment for future
                                //Filter = "(&(objectClass=user)(sAMAccountName=" + user + "))"
                                // Filter = "(&(objectClass=user)(mail=" + user + "*))"
-                               Filter = "(&(objectClass=user)(|(mail=" + user + "*)(displayname=" + user + "*)))"
+                              Filter = "(&(objectClass=user)(|(mail=" + user + "*)(displayname=" + user + "*)))"
                            };
 
                         System.DirectoryServices.SearchResultCollection results = directorySearcher.FindAll();
@@ -637,6 +637,22 @@ namespace EMIEWebPortal.Controllers
             }
         }
 
+        /// <summary>
+        /// Method to pull SAMAccount from the email address
+        /// </summary>
+        /// <param name="email">Email of User value</param>
+        /// <returns>result of insert operation</returns>
+        public static string GetSAMAccountNameByEmail(string email)
+        {
+            var domain = System.DirectoryServices.ActiveDirectory.Domain.GetComputerDomain(); // pull domain from Web Server
+            string pathNameDomain = "LDAP://" + domain;  /// this can be taken dynamically 
+                    var oroot = new System.DirectoryServices.DirectoryEntry(pathNameDomain);
+                    var osearcher = new System.DirectoryServices.DirectorySearcher(oroot);
+                    osearcher.Filter = string.Format("(&(mail={0}))", email);
+                    var oresult = osearcher.FindAll();
+
+            return oresult[0].Properties["sAMAccountName"][0].ToString();
+        }
 
         /// <summary>
         /// Method to create new user in User table
@@ -645,7 +661,8 @@ namespace EMIEWebPortal.Controllers
         /// <returns>result of insert operation</returns>
         private int CreateNewUser(UserMapping user)
         {
-            var logonId = user.User.Email.Split('@');
+            var logonId = GetSAMAccountNameByEmail(user.User.Email);
+            //var logonId = user.User.Email.Split('@');
 
             User newUser = new User();
             newUser.UserName = user.User.UserName;
@@ -655,7 +672,7 @@ namespace EMIEWebPortal.Controllers
             newUser.ModifiedById = user.User.CreatedById;
             newUser.ModifiedDate = DateTime.Now;
             newUser.IsActive = user.IsActive;
-            newUser.LoginId = logonId[0].ToString();
+            newUser.LoginId = logonId.ToString();
 
             DbEntity.Users.Add(newUser);
 
